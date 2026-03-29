@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sinte cuatro</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="app">
+    <h1>Sinte cuatro</h1>
+
+    <button id="startBtn">ON/OFF</button>
+
+    <div class="control">
+      <label>Volumen</label>
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
+    </div>
+
+    <div class="control">
+      <label>Cutoff</label>
+      <input type="range" id="cutoff" min="100" max="3000" step="1" value="800">
+    </div>
+
+    <div class="control">
+      <label>Frecuencia</label>
+      <input type="range" id="frequency" min="50" max="1000" step="1" value="220">
+    </div>
+
+    <div class="control">
+      <label>LFO Rate</label>
+      <input type="range" id="lfoRate" min="0.1" max="20" step="0.1" value="2">
+    </div>
+
+    <div class="control">
+      <label>LFO Amount</label>
+      <input type="range" id="lfoAmount" min="0" max="500" step="1" value="50">
+    </div>
+
+    <div class="control">
+      <label>LFO Target</label>
+      <select id="lfoTarget">
+        <option value="filter">Filtro</option>
+        <option value="osc">Oscilador</option>
+      </select>
+    </div>
+  </div>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>
