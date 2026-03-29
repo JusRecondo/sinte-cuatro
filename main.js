@@ -5,6 +5,7 @@ let currentLfoTarget = null
 let isPlaying = false
 let orientationHandler
 let motionHandler
+let motionEnabled = false
 
 const startBtn = document.getElementById("startBtn")
 
@@ -51,15 +52,20 @@ async function startSynth() {
 function stopSynth() {
   if (!audioCtx) return
 
-  masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2)
+  const now = audioCtx.currentTime
+  const stopTime = now + 0.2
+
+  masterGain.gain.cancelScheduledValues(now)
+  masterGain.gain.setValueAtTime(masterGain.gain.value, now)
+  masterGain.gain.linearRampToValueAtTime(0, stopTime)
+
+  try {
+    osc1.stop(stopTime)
+    osc2.stop(stopTime)
+    lfo.stop(stopTime)
+  } catch (e) {}
 
   setTimeout(() => {
-    try {
-      osc1.stop()
-      osc2.stop()
-      lfo.stop()
-    } catch (e) {}
-
     try {
       osc1.disconnect()
       osc2.disconnect()
@@ -70,9 +76,11 @@ function stopSynth() {
       masterGain.disconnect()
     } catch (e) {}
 
-    audioCtx.close()
-    audioCtx = null
-  }, 200)
+    if (audioCtx) {
+      audioCtx.close()
+      audioCtx = null
+    }
+  }, 300)
 
   stopSensors()
 }
@@ -144,40 +152,29 @@ function setLfoTarget(target) {
 
 function startSensors() {
   orientationHandler = (event) => {
+    if (!audioCtx || !motionEnabled) return
+
     const { alpha, beta, gamma } = event
 
-    if (!audioCtx) return
-
-    // 🎛️ CUT OFF (beta: -180 a 180)
     if (beta !== null) {
-      const norm = (beta + 180) / 360 // 0–1
+      const norm = (beta + 180) / 360
       const cutoff = 200 + norm * 3000
 
       filter.frequency.setTargetAtTime(cutoff, audioCtx.currentTime, 0.1)
     }
 
-    // 🎚️ DETUNE (gamma: -45 a 45 aprox)
     if (gamma !== null) {
       const detune = gamma * 5
 
       osc2.detune.setTargetAtTime(detune, audioCtx.currentTime, 0.1)
     }
 
-    // 🎹 FRECUENCIA BASE (alpha: 0–360)
     if (alpha !== null) {
       const norm = alpha / 360
       const freq = 100 + norm * 600
 
       osc1.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1)
       osc2.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1)
-    }
-
-    document.body.innerHTML += `<div id="debug"></div>`
-    document.getElementById("debug").style.background = "#ffffff"
-
-    if (beta && gamma) {
-      document.getElementById("debug").innerText =
-        `beta: ${beta.toFixed(1)} gamma: ${gamma.toFixed(1)}`
     }
   }
 
@@ -186,13 +183,17 @@ function startSensors() {
 
 function startMotion() {
   motionHandler = (event) => {
+    if (!audioCtx || !motionEnabled) return
+
     const acc = event.accelerationIncludingGravity
+    if (!acc) return
 
-    if (!acc || !audioCtx) return
+    const x = acc.x || 0
+    const y = acc.y || 0
+    const z = acc.z || 0
 
-    const intensity = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z)
+    const intensity = Math.abs(x) + Math.abs(y) + Math.abs(z)
 
-    // 🎛️ map a LFO rate
     const lfoRate = Math.min(15, intensity)
 
     lfo.frequency.setTargetAtTime(lfoRate, audioCtx.currentTime, 0.1)
@@ -211,27 +212,55 @@ function stopSensors() {
   }
 }
 
+const motionBtn = document.getElementById("motionBtn")
+
+motionBtn.addEventListener("click", () => {
+  motionEnabled = !motionEnabled;
+
+  motionBtn.textContent = motionEnabled
+    ? "Motion: ON"
+    : "Motion: OFF";
+
+  updateUIState();
+});
+
+function updateUIState() {
+  const controls = document.querySelectorAll("input, select");
+
+  controls.forEach((el) => {
+    el.disabled = motionEnabled;
+  });
+}
+
 document.getElementById("volume").addEventListener("input", (e) => {
+  if (!audioCtx || motionEnabled) return
+
   masterGain.gain.value = e.target.value
 })
 
 document.getElementById("cutoff").addEventListener("input", (e) => {
+  if (!audioCtx || motionEnabled) return
+
   filter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.01)
 })
 
 document.getElementById("frequency").addEventListener("input", (e) => {
+  if (!audioCtx || motionEnabled) return
   osc1.frequency.value = e.target.value
   osc2.frequency.value = e.target.value
 })
 
 document.getElementById("lfoRate").addEventListener("input", (e) => {
+  if (!audioCtx || motionEnabled) return
   lfo.frequency.value = e.target.value
 })
 
 document.getElementById("lfoAmount").addEventListener("input", (e) => {
+  if (!audioCtx || motionEnabled) return
   lfoGain.gain.value = e.target.value
 })
 
 document.getElementById("lfoTarget").addEventListener("change", (e) => {
+  if (!audioCtx || motionEnabled) return
   setLfoTarget(e.target.value)
 })
