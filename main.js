@@ -20,16 +20,15 @@ startBtn.addEventListener("click", async () => {
 
 async function startSynth() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-
-  // 🔥 CLAVE
+  
   if (audioCtx.state === "suspended") {
     await audioCtx.resume()
   }
-
-  // permisos iOS
+  
   if (typeof DeviceOrientationEvent.requestPermission === "function") {
     await DeviceOrientationEvent.requestPermission()
   }
+  console.log(audioCtx)
 
   setupSynth()
 
