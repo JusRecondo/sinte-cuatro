@@ -27,10 +27,17 @@ async function startSynth() {
     await audioCtx.resume()
   }
 
-  if (typeof DeviceOrientationEvent.requestPermission === "function") {
-    await DeviceOrientationEvent.requestPermission()
+  if (typeof DeviceMotionEvent.requestPermission === "function") {
+    try {
+      const response = await DeviceMotionEvent.requestPermission()
+      if (response !== "granted") {
+        alert("Permiso de movimiento denegado")
+        return
+      }
+    } catch (err) {
+      console.error(err)
+    }
   }
-  console.log(audioCtx)
 
   setupSynth()
 
@@ -44,33 +51,28 @@ async function startSynth() {
 function stopSynth() {
   if (!audioCtx) return
 
-  try {
-    osc1.stop()
-    osc2.stop()
-    lfo.stop()
-  } catch (e) {}
-
-  // limpiar conexiones
-  try {
-    osc1.disconnect()
-    osc2.disconnect()
-    lfo.disconnect()
-    lfoGain.disconnect()
-    filter.disconnect()
-    gainNode.disconnect()
-    masterGain.disconnect()
-  } catch (e) {}
-
   masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2)
 
   setTimeout(() => {
-    stopSynthImmediate()
+    try {
+      osc1.stop()
+      osc2.stop()
+      lfo.stop()
+    } catch (e) {}
+
+    try {
+      osc1.disconnect()
+      osc2.disconnect()
+      lfo.disconnect()
+      lfoGain.disconnect()
+      filter.disconnect()
+      gainNode.disconnect()
+      masterGain.disconnect()
+    } catch (e) {}
+
+    audioCtx.close()
+    audioCtx = null
   }, 200)
-
-  // opcional: cerrar el contexto (libera recursos)
-  audioCtx.close()
-
-  audioCtx = null
 
   stopSensors()
 }
@@ -168,6 +170,14 @@ function startSensors() {
 
       osc1.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1)
       osc2.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1)
+    }
+
+    document.body.innerHTML += `<div id="debug"></div>`
+    document.getElementById("debug").style.background = "#ffffff"
+
+    if (beta && gamma) {
+      document.getElementById("debug").innerText =
+        `beta: ${beta.toFixed(1)} gamma: ${gamma.toFixed(1)}`
     }
   }
 
