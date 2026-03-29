@@ -3,6 +3,8 @@ let osc1, osc2, filter, gainNode, masterGain
 let lfo, lfoGain
 let currentLfoTarget = null
 let isPlaying = false
+let orientationHandler
+let motionHandler
 
 const startBtn = document.getElementById("startBtn")
 
@@ -20,11 +22,11 @@ startBtn.addEventListener("click", async () => {
 
 async function startSynth() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-  
+
   if (audioCtx.state === "suspended") {
     await audioCtx.resume()
   }
-  
+
   if (typeof DeviceOrientationEvent.requestPermission === "function") {
     await DeviceOrientationEvent.requestPermission()
   }
@@ -34,6 +36,9 @@ async function startSynth() {
 
   masterGain.gain.setValueAtTime(0, audioCtx.currentTime)
   masterGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.2)
+
+  startSensors()
+  startMotion()
 }
 
 function stopSynth() {
@@ -66,6 +71,8 @@ function stopSynth() {
   audioCtx.close()
 
   audioCtx = null
+
+  stopSensors()
 }
 
 function setupSynth() {
@@ -130,6 +137,67 @@ function setLfoTarget(target) {
   if (target === "osc") {
     lfoGain.connect(osc1.detune)
     lfoGain.connect(osc2.detune)
+  }
+}
+
+function startSensors() {
+  orientationHandler = (event) => {
+    const { alpha, beta, gamma } = event
+
+    if (!audioCtx) return
+
+    // 🎛️ CUT OFF (beta: -180 a 180)
+    if (beta !== null) {
+      const norm = (beta + 180) / 360 // 0–1
+      const cutoff = 200 + norm * 3000
+
+      filter.frequency.setTargetAtTime(cutoff, audioCtx.currentTime, 0.1)
+    }
+
+    // 🎚️ DETUNE (gamma: -45 a 45 aprox)
+    if (gamma !== null) {
+      const detune = gamma * 5
+
+      osc2.detune.setTargetAtTime(detune, audioCtx.currentTime, 0.1)
+    }
+
+    // 🎹 FRECUENCIA BASE (alpha: 0–360)
+    if (alpha !== null) {
+      const norm = alpha / 360
+      const freq = 100 + norm * 600
+
+      osc1.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1)
+      osc2.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1)
+    }
+  }
+
+  window.addEventListener("deviceorientation", orientationHandler)
+}
+
+function startMotion() {
+  motionHandler = (event) => {
+    const acc = event.accelerationIncludingGravity
+
+    if (!acc || !audioCtx) return
+
+    const intensity = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z)
+
+    // 🎛️ map a LFO rate
+    const lfoRate = Math.min(15, intensity)
+
+    lfo.frequency.setTargetAtTime(lfoRate, audioCtx.currentTime, 0.1)
+  }
+
+  window.addEventListener("devicemotion", motionHandler)
+}
+
+function stopSensors() {
+  if (orientationHandler) {
+    window.removeEventListener("deviceorientation", orientationHandler)
+  }
+
+  if (motionHandler) {
+    window.removeEventListener("devicemotion", motionHandler)
   }
 }
 
