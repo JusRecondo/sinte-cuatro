@@ -98,10 +98,8 @@ function setupSynth() {
   lfo.frequency.value = 2
   lfoGain.gain.value = 50
 
-  // 🔥 ESTA LINEA FALTABA
   lfo.connect(lfoGain)
 
-  // conectar a algo por defecto
   setLfoTarget("filter")
 
   osc1.type = "sawtooth"
